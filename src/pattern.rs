@@ -132,43 +132,6 @@ pub trait Pattern<'a> {
     fn find_in(&self, haystack: &'a str) -> Vec<Match<'a>>;
 
     /**
-    Find all occurences of the pattern in the given `&str` that are prefixes.
-
-    # Examples
-    ```
-    # use plexer::pattern::{Match, Pattern};
-    #
-    assert!("ab".find_prefixes_in("cdab").is_empty());
-    assert_eq!("ab".find_prefixes_in("abcd"), vec![Match::new("abcd", 0, 2)]);
-    ```
-    */
-    fn find_prefixes_in(&self, haystack: &'a str) -> Vec<Match<'a>> {
-        self.find_in(haystack)
-            .into_iter()
-            .filter(|mat| mat.start == 0)
-            .collect()
-    }
-
-    /**
-    Find all occurences of the pattern in the given `&str` that are suffixes.
-
-    # Examples
-    ```
-    # use plexer::pattern::{Match, Pattern};
-    #
-    assert!("ab".find_suffixes_in("abcd").is_empty());
-    assert_eq!("ab".find_suffixes_in("cdab"), vec![Match::new("cdab", 2, 4)]);
-    ```
-    */
-    fn find_suffixes_in(&self, haystack: &'a str) -> Vec<Match<'a>> {
-        let len = haystack.len();
-        self.find_in(haystack)
-            .into_iter()
-            .filter(|mat| mat.end == len)
-            .collect()
-    }
-
-    /**
     Find one occurrence of the pattern in the given `&str`.
 
     # Examples
@@ -195,7 +158,10 @@ pub trait Pattern<'a> {
     ```
     */
     fn find_prefix_in(&self, haystack: &'a str) -> Option<Match<'a>> {
-        self.find_prefixes_in(haystack).into_iter().next()
+        self.find_in(haystack)
+            .into_iter()
+            .filter(|mat| mat.start == 0)
+            .next()
     }
 
     /**
@@ -210,7 +176,10 @@ pub trait Pattern<'a> {
     ```
     */
     fn find_suffix_in(&self, haystack: &'a str) -> Option<Match<'a>> {
-        self.find_suffixes_in(haystack).into_iter().next()
+        self.find_in(haystack)
+            .into_iter()
+            .filter(|mat| mat.end == haystack.len())
+            .next()
     }
 }
 

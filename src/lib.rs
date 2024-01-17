@@ -18,7 +18,7 @@ lexer!(
 );
 ```
 
-The [`lexer!`] macro generate module `gen` which contains `Token`, `LexerError`, `LexerResult` and `Lexer`.
+The [`lexer!`] macro generates module `gen` which contains `Token`, `LexerError`, `LexerResult` and `Lexer`.
 
 You can now call `Lexer::tokenize` to tokenize a `&str`,
 it should returns a `Lexer` instance that implements `Iterator`. \
