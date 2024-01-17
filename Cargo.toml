@@ -5,7 +5,7 @@ authors = [ "emanuel" ]
 edition = "2021"
 description = "A Pattern-matching LEXER"
 license = "MIT"
-# repository = "https://github.com/emsquid/lexer/"
+repository = "https://github.com/emsquid/plexer/"
 keywords = ["lexer", "lexical", "analysis", "parser", "compiler"]
 
 [dependencies]
