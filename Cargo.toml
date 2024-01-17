@@ -1,0 +1,12 @@
+[package]
+name = "plexer"
+version = "0.1.0"
+authors = [ "emanuel" ]
+edition = "2021"
+description = "A Pattern-matching LEXER"
+license = "MIT"
+# repository = "https://github.com/emsquid/lexer/"
+keywords = ["lexer", "lexical", "analysis", "parser", "compiler"]
+
+[dependencies]
+regex = "1.10.2"
