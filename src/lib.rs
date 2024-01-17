@@ -56,7 +56,7 @@ lexer!(
 ```
 That will expand to these enum and structs.
 ```ignore
-mod lexer {
+mod gen {
     pub enum Token {
         OPERATOR(char),
         NUMBER(usize),
