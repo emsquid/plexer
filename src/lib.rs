@@ -93,11 +93,13 @@ And you can use them afterwards.
 #         [' ', '\n'] => |_| Token::WHITESPACE,
 #     },
 # );
-let mut lex = gen::Lexer::tokenize("x_4 = 1 + 3 = 2 * 2");
-assert_eq!(lex.nth(2), Some(Ok(gen::Token::OPERATOR('='))));
-assert_eq!(lex.nth(5), Some(Ok(gen::Token::NUMBER(3))));
+use gen::*;
+
+let mut lex = Lexer::tokenize("x_4 = 1 + 3 = 2 * 2");
+assert_eq!(lex.nth(2), Some(Ok(Token::OPERATOR('='))));
+assert_eq!(lex.nth(5), Some(Ok(Token::NUMBER(3))));
 // Our lexer doesn't handle parenthesis...
-let mut err = gen::Lexer::tokenize("x_4 = (1 + 3)");
+let mut err = Lexer::tokenize("x_4 = (1 + 3)");
 assert!(err.nth(4).is_some_and(|res| res.is_err()));
 ```
 */

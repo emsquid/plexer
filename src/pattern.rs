@@ -15,15 +15,15 @@ and closures implementing `Fn(&str) -> bool`.
 let hay = "Can you find a needle in a haystack";
 
 // char pattern
-assert!('n'.find_one_in(hay).is_some_and(|m| m.start == 2));
+assert!('n'.find_in(hay).is_some_and(|m| m.start == 2));
 // &str pattern
-assert!("you".find_one_in(hay).is_some_and(|m| m.start == 4));
+assert!("you".find_in(hay).is_some_and(|m| m.start == 4));
 // array of chars pattern
-assert!(['a', 'e', 'i', 'o', 'u'].find_one_in(hay).is_some_and(|m| m.start == 1));
+assert!(['a', 'e', 'i', 'o', 'u'].find_in(hay).is_some_and(|m| m.start == 1));
 // array of &str pattern
-assert!(["Can", "you"].find_one_in(hay).is_some_and(|m| m.start == 0));
+assert!(["Can", "you"].find_in(hay).is_some_and(|m| m.start == 0));
 // closure pattern
-assert!((|s: &str| s.starts_with("f")).find_one_in(hay).is_some_and(|m| m.start == 8));
+assert!((|s: &str| s.starts_with("f")).find_in(hay).is_some_and(|m| m.start == 8));
 ```
 */
 
@@ -114,36 +114,45 @@ by default it is implemented for the following types.
 | ```String```              | is substring                            |
 | ```&[char]```             | any `char` match                        |
 | ```&[&str]```             | any `&str` match                        |
-| ```F: Fn(&str) -> bool``` | `F` returns `true` for substring        |
+| ```F: Fn(&str) -> bool``` | `F` returns `true` for substring (slow) |
 | ```Regex```               | `Regex` match substring                 |
 */
 pub trait Pattern<'a> {
     /**
-    Find all occurences of the pattern in the given `&str`.
+    Find first occurence of the pattern in the given `&str`.
 
     # Examples
     ```
     # use plexer::pattern::{Match, Pattern};
     #
-    assert!("ab".find_in("cd").is_empty());
-    assert_eq!("ab".find_in("cabd"), vec![Match::new("cabd", 1, 3)]);
+    assert!("ab".find_in("cd").is_none());
+    assert_eq!("ab".find_in("cabd"), Some(Match::new("cabd", 1, 3)));
     ```
     */
-    fn find_in(&self, haystack: &'a str) -> Vec<Match<'a>>;
+    fn find_in(&self, haystack: &'a str) -> Option<Match<'a>>;
 
     /**
-    Find one occurrence of the pattern in the given `&str`.
+    Find last occurence of the pattern in the given `&str`.
 
     # Examples
     ```
     # use plexer::pattern::{Match, Pattern};
     #
-    assert!("ab".find_one_in("cd").is_none());
-    assert_eq!("ab".find_one_in("cdab"), Some(Match::new("cdab", 2, 4)));
+    assert!("ab".rev_find_in("cd").is_none());
+    assert_eq!("ab".rev_find_in("cabd"), Some(Match::new("cabd", 1, 3)));
     ```
     */
-    fn find_one_in(&self, haystack: &'a str) -> Option<Match<'a>> {
-        self.find_in(haystack).into_iter().next()
+    fn rev_find_in(&self, haystack: &'a str) -> Option<Match<'a>> {
+        let mut cursor = haystack.len();
+
+        while cursor > 0 {
+            cursor -= 1;
+            if let Some(mat) = self.find_in(&haystack[cursor..]) {
+                return Some(Match::new(haystack, cursor + mat.start, cursor + mat.end));
+            }
+        }
+
+        None
     }
 
     /**
@@ -158,10 +167,7 @@ pub trait Pattern<'a> {
     ```
     */
     fn find_prefix_in(&self, haystack: &'a str) -> Option<Match<'a>> {
-        self.find_in(haystack)
-            .into_iter()
-            .filter(|mat| mat.start == 0)
-            .next()
+        self.find_in(haystack).filter(|mat| mat.start == 0)
     }
 
     /**
@@ -176,69 +182,65 @@ pub trait Pattern<'a> {
     ```
     */
     fn find_suffix_in(&self, haystack: &'a str) -> Option<Match<'a>> {
-        self.find_in(haystack)
-            .into_iter()
+        self.rev_find_in(haystack)
             .filter(|mat| mat.end == haystack.len())
-            .next()
     }
 }
 
 impl<'a> Pattern<'a> for char {
-    fn find_in(&self, haystack: &'a str) -> Vec<Match<'a>> {
+    fn find_in(&self, haystack: &'a str) -> Option<Match<'a>> {
         haystack
-            .match_indices(&self.to_string())
-            .map(|(i, mat)| Match::new(haystack, i, i + mat.len()))
-            .collect()
+            .find(&self.to_string())
+            .map(|i| Match::new(haystack, i, i + 1))
     }
 }
 
 impl<'a> Pattern<'a> for [char] {
-    fn find_in(&self, haystack: &'a str) -> Vec<Match<'a>> {
-        self.iter().flat_map(|ch| ch.find_in(haystack)).collect()
+    fn find_in(&self, haystack: &'a str) -> Option<Match<'a>> {
+        self.into_iter().flat_map(|c| c.find_in(haystack)).next()
     }
 }
 
 impl<'a, const N: usize> Pattern<'a> for [char; N] {
-    fn find_in(&self, haystack: &'a str) -> Vec<Match<'a>> {
+    fn find_in(&self, haystack: &'a str) -> Option<Match<'a>> {
         self.as_slice().find_in(haystack)
     }
 }
 
 impl<'a, const N: usize> Pattern<'a> for &[char; N] {
-    fn find_in(&self, haystack: &'a str) -> Vec<Match<'a>> {
+    fn find_in(&self, haystack: &'a str) -> Option<Match<'a>> {
         self.as_slice().find_in(haystack)
     }
 }
 
 impl<'a> Pattern<'a> for String {
-    fn find_in(&self, haystack: &'a str) -> Vec<Match<'a>> {
-        haystack
-            .match_indices(self)
-            .map(|(i, mat)| Match::new(haystack, i, i + mat.len()))
-            .collect()
+    fn find_in(&self, haystack: &'a str) -> Option<Match<'a>> {
+        self.as_str().find_in(haystack)
     }
 }
 
 impl<'a> Pattern<'a> for &str {
-    fn find_in(&self, haystack: &'a str) -> Vec<Match<'a>> {
-        self.to_string().find_in(haystack)
+    fn find_in(&self, haystack: &'a str) -> Option<Match<'a>> {
+        haystack
+            .find(self)
+            .map(|i| Match::new(haystack, i, i + self.len()))
     }
 }
 
 impl<'a> Pattern<'a> for [&str] {
-    fn find_in(&self, haystack: &'a str) -> Vec<Match<'a>> {
-        self.iter().flat_map(|ch| ch.find_in(haystack)).collect()
+    fn find_in(&self, haystack: &'a str) -> Option<Match<'a>> {
+        self.into_iter().flat_map(|s| s.find_in(haystack)).next()
     }
 }
 
 impl<'a, const N: usize> Pattern<'a> for [&str; N] {
-    fn find_in(&self, haystack: &'a str) -> Vec<Match<'a>> {
+    fn find_in(&self, haystack: &'a str) -> Option<Match<'a>> {
         self.as_slice().find_in(haystack)
     }
 }
 
 impl<'a, const N: usize> Pattern<'a> for &[&str; N] {
-    fn find_in(&self, haystack: &'a str) -> Vec<Match<'a>> {
+    fn find_in(&self, haystack: &'a str) -> Option<Match<'a>> {
         self.as_slice().find_in(haystack)
     }
 }
@@ -247,8 +249,7 @@ impl<'a: 'b, 'b, F> Pattern<'a> for F
 where
     F: Fn(&'b str) -> bool,
 {
-    fn find_in(&self, haystack: &'a str) -> Vec<Match<'a>> {
-        let mut matches = Vec::new();
+    fn find_in(&self, haystack: &'a str) -> Option<Match<'a>> {
         let mut cur_1 = 0;
         // The goal is to check from left to right and to take the largest match
         while cur_1 < haystack.len() {
@@ -256,21 +257,20 @@ where
             while cur_2 > cur_1 {
                 let sub = &haystack[cur_1..cur_2];
                 if (self)(sub) {
-                    matches.push(Match::new(haystack, cur_1, cur_2));
-                    cur_1 = cur_2;
+                    return Some(Match::new(haystack, cur_1, cur_2));
                 }
                 cur_2 -= 1
             }
             cur_1 += 1;
         }
-        matches
+
+        None
     }
 }
 
 impl<'a> Pattern<'a> for Regex {
-    fn find_in(&self, haystack: &'a str) -> Vec<Match<'a>> {
-        self.find_iter(haystack)
-            .map(|mat| Match::new(haystack, mat.start(), mat.end()))
-            .collect()
+    fn find_in(&self, haystack: &'a str) -> Option<Match<'a>> {
+        self.find(haystack)
+            .map(|m| Match::new(haystack, m.start(), m.end()))
     }
 }
