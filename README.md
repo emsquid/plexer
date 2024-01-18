@@ -42,8 +42,8 @@ lexer!(
 It generates module `gen` which contains `Token`, `LexerError`, `LexerResult` and `Lexer`.
 
 You can now call `Lexer::tokenize` to tokenize a `&str`,
-it should returns a `Lexer` instance that implements `Iterator`. \
-Each iteration, the `Lexer` try to match one of the given `Pattern` and return a `LexerResult<Token>` built from the best match.
+it should return a `Lexer` instance that implements `Iterator`. \
+Each iteration, the `Lexer` tries to match one of the given `Pattern` and returns a `LexerResult<Token>` built from the best match.
 
 ### Example
 
