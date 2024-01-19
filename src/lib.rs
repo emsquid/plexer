@@ -183,10 +183,12 @@ assert_eq!(lex.next(), Some(Ok(gen::Token::KEYWORD(String::from("if")))));
 **/
 #[macro_export]
 macro_rules! lexer {
-    ($($token:tt $(($($field: ty),+))? {$( $pattern:expr => $build:expr,)+}),* $(,)*) => {
+    ($($token:ident $(($($field: ty),+))? {$( $pattern:expr => $build:expr,)+}),* $(,)*) => {
         mod gen {
             use $crate::regex;
             use $crate::pattern::Pattern;
+
+            const MAX_LENGTH: usize = 1024;
 
             #[derive(Debug, Clone, PartialEq)]
             pub enum Token {
@@ -235,11 +237,14 @@ macro_rules! lexer {
 
                 fn next(&mut self) -> Option<Self::Item> {
                     if self.cursor < self.haystack.len() {
+                        let start = self.cursor;
+                        let end = std::cmp::min(self.haystack.len(), self.cursor + MAX_LENGTH);
+
                         let mut token = None;
                         let mut len = 0;
 
                         $($({
-                            if let Some(mat) = $pattern.find_prefix_in(&self.haystack[self.cursor..]) {
+                            if let Some(mat) = $pattern.find_prefix_in(&self.haystack[start..end]) {
                                 if mat.len() > len {
                                     token = Some($build(mat.to_string()));
                                     len = mat.len();
