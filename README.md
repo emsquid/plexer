@@ -21,7 +21,7 @@ by default it is implemented for the following types.
 | `String`              | is substring                            |
 | `&[char]`             | any `char` match                        |
 | `&[&str]`             | any `&str` match                        |
-| `F: Fn(&str) -> bool` | `F` returns `true` for substring        |
+| `F: Fn(&str) -> bool` | `F` returns `true` for substring (slow) |
 | `Regex`               | `Regex` match substring                 |
 
 ### Usage
@@ -41,7 +41,7 @@ lexer!(
 
 It generates module `gen` which contains `Token`, `LexerError`, `LexerResult` and `Lexer`.
 
-You can now call `Lexer::tokenize` to tokenize a `&str`,
+You can now call `Token::tokenize` to tokenize a `&str`,
 it should return a `Lexer` instance that implements `Iterator`. \
 Each iteration, the `Lexer` tries to match one of the given `Pattern` and returns a `LexerResult<Token>` built from the best match.
 
@@ -85,10 +85,10 @@ mod gen {
         IDENTIFIER(String),
         WHITESPACE,
     }
+
     pub struct Lexer {...}
     pub struct LexerError {...}
     pub type LexerResult<T> = Result<T, LexerError>;
-    // ...
 }
 ```
 
@@ -97,10 +97,11 @@ And you can use them afterwards.
 ```rust
 use gen::*;
 
-let mut lex = Lexer::tokenize("x_4 = 1 + 3 = 2 * 2");
+let mut lex = Token::tokenize("x_4 = 1 + 3 = 2 * 2");
 assert_eq!(lex.nth(2), Some(Ok(Token::OPERATOR('='))));
 assert_eq!(lex.nth(5), Some(Ok(Token::NUMBER(3))));
+
 // Our lexer doesn't handle parenthesis...
-let mut err = Lexer::tokenize("x_4 = (1 + 3)");
+let mut err = Token::tokenize("x_4 = (1 + 3)");
 assert!(err.nth(4).is_some_and(|res| res.is_err()));
 ```

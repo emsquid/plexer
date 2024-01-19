@@ -20,7 +20,7 @@ lexer!(
 
 The [`lexer!`] macro generates module `gen` which contains `Token`, `LexerError`, `LexerResult` and `Lexer`.
 
-You can now call `Lexer::tokenize` to tokenize a `&str`,
+You can now call `Token::tokenize` to tokenize a `&str`,
 it should return a `Lexer` instance that implements `Iterator`. \
 Each iteration, the `Lexer` tries to match one of the given `Pattern` and returns a `LexerResult<Token>` built from the best match.
 
@@ -63,10 +63,10 @@ mod gen {
         IDENTIFIER(String),
         WHITESPACE,
     }
+
     pub struct Lexer {...}
     pub struct LexerError {...}
     pub type LexerResult<T> = Result<T, LexerError>;
-    // ...
 }
 ```
 And you can use them afterwards.
@@ -95,11 +95,12 @@ And you can use them afterwards.
 # );
 use gen::*;
 
-let mut lex = Lexer::tokenize("x_4 = 1 + 3 = 2 * 2");
+let mut lex = Token::tokenize("x_4 = 1 + 3 = 2 * 2");
 assert_eq!(lex.nth(2), Some(Ok(Token::OPERATOR('='))));
 assert_eq!(lex.nth(5), Some(Ok(Token::NUMBER(3))));
+
 // Our lexer doesn't handle parenthesis...
-let mut err = Lexer::tokenize("x_4 = (1 + 3)");
+let mut err = Token::tokenize("x_4 = (1 + 3)");
 assert!(err.nth(4).is_some_and(|res| res.is_err()));
 ```
 */
@@ -123,6 +124,7 @@ let err = regex!("(");
 #
 // Unwrap inside the macro
 let re = regex!("t|e|s|t");
+
 // Don't unwrap
 let gex = regex!(@safe "t|e|s|t").unwrap();
 ```
@@ -175,7 +177,7 @@ lexer!(
     },
 );
 
-let mut lex = gen::Lexer::tokenize("if test { one } else { two }");
+let mut lex = gen::Token::tokenize("if test { one } else { two }");
 assert_eq!(lex.next(), Some(Ok(gen::Token::KEYWORD(String::from("if")))));
 ```
 **/
@@ -189,6 +191,13 @@ macro_rules! lexer {
             #[derive(Debug, Clone, PartialEq)]
             pub enum Token {
                 $($token$(($($field),+))?),*
+            }
+
+            #[allow(dead_code)]
+            impl Token {
+                pub fn tokenize<'a>(haystack: &'a str) -> Lexer<'a> {
+                    Lexer { haystack, cursor: 0 }
+                }
             }
 
             #[derive(Debug, Clone, PartialEq)]
@@ -219,13 +228,6 @@ macro_rules! lexer {
             pub struct Lexer<'a> {
                 haystack: &'a str,
                 cursor: usize,
-            }
-
-            #[allow(dead_code)]
-            impl<'a> Lexer<'a> {
-                pub fn tokenize(haystack: &'a str) -> Self {
-                    Self { haystack, cursor: 0 }
-                }
             }
 
             impl<'a> Iterator for Lexer<'a> {
