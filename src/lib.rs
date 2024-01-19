@@ -18,7 +18,7 @@ lexer!(
 );
 ```
 
-The [`lexer!`] macro generates module `gen` which contains `Token`, `LexerError`, `LexerResult` and `Lexer`.
+The [`lexer!`] macro generates module `lexer` which contains `Token`, `LexerError`, `LexerResult` and `Lexer`.
 
 You can now call `Token::tokenize` to tokenize a `&str`,
 it should return a `Lexer` instance that implements `Iterator`. \
@@ -56,7 +56,7 @@ lexer!(
 ```
 That will expand to these enum and structs.
 ```ignore
-mod gen {
+mod lexer {
     pub enum Token {
         OPERATOR(char),
         NUMBER(usize),
@@ -93,7 +93,7 @@ And you can use them afterwards.
 #         [' ', '\n'] => |_| Token::WHITESPACE,
 #     },
 # );
-use gen::*;
+use lexer::*;
 
 let mut lex = Token::tokenize("x_4 = 1 + 3 = 2 * 2");
 assert_eq!(lex.nth(2), Some(Ok(Token::OPERATOR('='))));
@@ -177,27 +177,28 @@ lexer!(
     },
 );
 
-let mut lex = gen::Token::tokenize("if test { one } else { two }");
-assert_eq!(lex.next(), Some(Ok(gen::Token::KEYWORD(String::from("if")))));
+let mut lex = lexer::Token::tokenize("if test { one } else { two }");
+assert_eq!(lex.next(), Some(Ok(lexer::Token::KEYWORD(String::from("if")))));
 ```
 **/
 #[macro_export]
 macro_rules! lexer {
     ($($token:ident $(($($field: ty),+))? {$( $pattern:expr => $build:expr,)+}),* $(,)*) => {
-        mod gen {
+        mod lexer {
             use $crate::regex;
             use $crate::pattern::Pattern;
 
             const MAX_LENGTH: usize = 1024;
 
             #[derive(Debug, Clone, PartialEq)]
-            pub enum Token {
-                $($token$(($($field),+))?),*
+            pub enum Token<'a> {
+                $($token$(($($field),+))?),*,
+                _phantom(std::marker::PhantomData<&'a ()>),
             }
 
             #[allow(dead_code)]
-            impl Token {
-                pub fn tokenize<'a>(haystack: &'a str) -> Lexer<'a> {
+            impl<'a> Token<'a> {
+                pub fn tokenize(haystack: &'a str) -> Lexer<'a> {
                     Lexer { haystack, cursor: 0 }
                 }
             }
@@ -233,7 +234,7 @@ macro_rules! lexer {
             }
 
             impl<'a> Iterator for Lexer<'a> {
-                type Item = LexerResult<'a, Token>;
+                type Item = LexerResult<'a, Token<'a>>;
 
                 fn next(&mut self) -> Option<Self::Item> {
                     if self.cursor < self.haystack.len() {
